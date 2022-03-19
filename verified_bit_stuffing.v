@@ -108,6 +108,15 @@ Proof.
       + intros hta. pose (IH1' := IH1 htta). pose (H2 := Hstep hta htta ttta IH0 IH1'). exact H2.
 Qed.
 
+Lemma list_dual_induction2 (P : list bool -> list bool -> Prop) :
+  P [] [] ->
+  (forall (ha1 ha2 : bool) (ta1 ta2 : list bool), P ta1 ta2 -> P (ha1::ta1) (ha2::ta2)) ->
+  forall (a1 a2 : list bool), P a1 a2.
+Proof.
+  intros.
+
+Admitted.
+
 Lemma stuff_no_contains_three_true : forall (a : list bool), ~Is_true (contains (stuff a) [true; true; true]).
   intros.
   induction a as [|ha | ha hta tta H0 H1] using list_dual_induction.
@@ -149,17 +158,76 @@ Lemma contains_remove_front : forall (a tk : list bool) (hk : bool),
 Qed.
 
 
+(*Lemma contains_end L forall (ha k : list bool) (ta : bool), Is_true (contains (ha ++ [ta])*)
+
+Definition ends_with (a k : list bool) : bool :=
+  starts_with (rev a) (rev k).
+
+Lemma starts_with_ends_with : forall (a k : list bool), Is_true (starts_with a k) <-> Is_true (ends_with (rev a) (rev k)).
+  intros.
+  split.
+    - intros. unfold ends_with. rewrite rev_involutive. rewrite rev_involutive. exact H.
+    - intros. unfold ends_with in H. rewrite rev_involutive in H. rewrite rev_involutive in H. exact H. 
+Qed.
+
+
+Lemma starts_with_append : forall (ha k : list bool) (ta : bool), Is_true (starts_with ha k) -> Is_true (starts_with (ha ++ [ta]) k).
+  intros ha.
+  induction ha as [| hha tha IH]. 
+    - intros. destruct k. all: auto. contradiction.
+    - intros k ta H.
+      destruct k as [| hk tk].
+       + auto.
+       + simpl. simpl in H. apply andb_prop_elim in H. destruct H as [HL HR]. 
+         pose (apply_IH := IH tk ta HR).
+         apply Is_true_eq_true in HL. rewrite HL.
+         simpl. exact apply_IH.
+Qed.
+
+
+Lemma contains_at_end : forall (ha k : list bool) (ta : bool), Is_true (contains (ha ++ [ta]) k) <-> contains ha k = true \/ ends_with (ha ++ [ta]) k = true.
+  intros. 
+  split.
+    - intros. 
+    - intros. destruct H. 
+      + induction ha as [| hha tha IH].
+        * destruct k.
+          -- simpl. exact I.
+          -- simpl in H. lia. 
+        * destruct k as [| hk tk].
+          -- simpl. exact I.
+          -- simpl. simpl in H. apply orb_true_iff in H. destruct H as [HL | HR] .
+            ++ symmetry in HL. apply andb_true_eq in HL. destruct HL as [HLR HLL]. apply Is_true_eq_right in HLL.
+               pose (apply_starts_with_append := starts_with_append tha tk ta HLL).
+               apply Is_true_eq_true in apply_starts_with_append. rewrite apply_starts_with_append. rewrite <- HLR. simpl. exact I.
+            ++ pose (apply_IH := IH HR). apply Is_true_eq_true in apply_IH. rewrite apply_IH. rewrite orb_true_r. simpl. exact I.
+Qed.
+
 Lemma contains_reverse : forall (a k : list bool), Is_true (contains a k) <-> Is_true (contains (rev a) (rev k)).
   intros.
   split.
     - intros.
       induction a as [| ta ha IH] using rev_ind.
+        + destruct k.
+          * simpl. exact I.
+          * simpl in H. contradiction.
+        + destruct k as [| hk tk].
+          * case (rev (ha ++ [ta])). all: simpl. all: auto.
+          *
+
+
+
+
+
+
+    induction a as [| ta ha IH] using rev_ind.
         + destruct k. 
           * simpl. exact I.
           * simpl in H. contradiction.
         + destruct k as [| tk hk] using rev_ind.
           * simpl. case (rev (ha ++ [ta])). all: simpl. all: auto.
-          * 
+          * rewrite rev_unit. rewrite rev_unit. simpl. rewrite rev_unit in IH.
+            case ()
 Admitted.
 
 
@@ -245,3 +313,5 @@ Theorem valid_communication : forall (a : list bool), a = unstuff (remove_flags 
     - apply stuff_unstuff_eq.
     - apply add_remove_flags_eq.
 Qed.
+
+Recursive Extraction stuff unstuff add_flags remove_flags.
