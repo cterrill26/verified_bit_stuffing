@@ -108,14 +108,6 @@ Proof.
       + intros hta. pose (IH1' := IH1 htta). pose (H2 := Hstep hta htta ttta IH0 IH1'). exact H2.
 Qed.
 
-Lemma list_dual_induction2 (P : list bool -> list bool -> Prop) :
-  P [] [] ->
-  (forall (ha1 ha2 : bool) (ta1 ta2 : list bool), P ta1 ta2 -> P (ha1::ta1) (ha2::ta2)) ->
-  forall (a1 a2 : list bool), P a1 a2.
-Proof.
-  intros.
-
-Admitted.
 
 Lemma stuff_no_contains_three_true : forall (a : list bool), ~Is_true (contains (stuff a) [true; true; true]).
   intros.
@@ -184,11 +176,11 @@ Lemma starts_with_append : forall (ha k : list bool) (ta : bool), Is_true (start
          simpl. exact apply_IH.
 Qed.
 
-
+(*
 Lemma contains_at_end : forall (ha k : list bool) (ta : bool), Is_true (contains (ha ++ [ta]) k) <-> contains ha k = true \/ ends_with (ha ++ [ta]) k = true.
   intros. 
   split.
-    - intros. 
+    - intros. admit.
     - intros. destruct H. 
       + induction ha as [| hha tha IH].
         * destruct k.
@@ -201,33 +193,13 @@ Lemma contains_at_end : forall (ha k : list bool) (ta : bool), Is_true (contains
                pose (apply_starts_with_append := starts_with_append tha tk ta HLL).
                apply Is_true_eq_true in apply_starts_with_append. rewrite apply_starts_with_append. rewrite <- HLR. simpl. exact I.
             ++ pose (apply_IH := IH HR). apply Is_true_eq_true in apply_IH. rewrite apply_IH. rewrite orb_true_r. simpl. exact I.
-Qed.
+Admitted.*)
 
 Lemma contains_reverse : forall (a k : list bool), Is_true (contains a k) <-> Is_true (contains (rev a) (rev k)).
   intros.
   split.
     - intros.
-      induction a as [| ta ha IH] using rev_ind.
-        + destruct k.
-          * simpl. exact I.
-          * simpl in H. contradiction.
-        + destruct k as [| hk tk].
-          * case (rev (ha ++ [ta])). all: simpl. all: auto.
-          *
-
-
-
-
-
-
-    induction a as [| ta ha IH] using rev_ind.
-        + destruct k. 
-          * simpl. exact I.
-          * simpl in H. contradiction.
-        + destruct k as [| tk hk] using rev_ind.
-          * simpl. case (rev (ha ++ [ta])). all: simpl. all: auto.
-          * rewrite rev_unit. rewrite rev_unit. simpl. rewrite rev_unit in IH.
-            case ()
+      admit.
 Admitted.
 
 
@@ -262,25 +234,74 @@ Lemma stuff_no_contains_flag : forall (a : list bool), ~Is_true (contains (stuff
 Qed.
 
 
-Lemma stuff_no_flag_overlap_real_flag : forall (a : list bool) (b0 b1 b2 b3 : bool), 
-        [b0; b1; b2; b3] = stuff a -> ~Is_true (contains ([b0; b1; b2; b3] ++ [false;true;true;true]) [false;true;true;true;false]).
+Lemma stuff_and_partial_flag_no_contains_flag : forall (a b: list bool) , 
+        b = stuff a -> ~Is_true (contains (b ++ [false;true;true;true]) [false;true;true;true;false]).
   intros.
-  destruct b0,b1,b2,b3.
-    all: auto.
-    pose (H1 := stuff_no_contains_three_true a). 
-    rewrite <- H in H1.
-    simpl in H1.
-    contradiction.
+  pose (apply_contains_reverse := contains_reverse (b ++ [false; true; true; true]) [false; true; true; true; false]).
+  destruct apply_contains_reverse as [revl revr].
+  repeat rewrite <- app_assoc in revl. simpl in revl.
+  unfold not.
+  intros false_H.
+  pose (rev_false_H := revl false_H).
+  rewrite rev_app_distr in rev_false_H. simpl in rev_false_H.
+  pose (apply_contains_reverse' := contains_reverse (rev b) [false; true; true; true; false]).
+  simpl in apply_contains_reverse'.
+  rewrite rev_involutive in apply_contains_reverse'.
+  rewrite H in apply_contains_reverse' at 2.
+  destruct (contains (rev b) [false; true; true; true; false]).
+    - destruct apply_contains_reverse'. 
+       simpl in H0.
+       pose (H2 := stuff_no_contains_flag a).
+       auto.
+    - rewrite orb_false_r in rev_false_H.
+       assert (Is_true (contains (rev b) [true; true; true; false])).
+        + destruct (rev b). 
+          * contradiction.
+          * simpl.
+            simpl in rev_false_H.
+            apply Is_true_eq_true in rev_false_H.
+            rewrite rev_false_H.
+            simpl. exact I.
+        + apply contains_reverse in H0.
+          rewrite rev_involutive in H0.
+          simpl in H0.
+          rewrite H in H0.
+          apply contains_remove_front in H0.
+          pose (H1 := stuff_no_contains_three_true a).
+          contradiction.
+Qed.
+
+Lemma not_is_true_iff_false: forall (b : bool), ~Is_true b <-> b = false.
+    intros.
+    split.
+    - intros. destruct b.
+      + simpl in H. contradiction.
+      + reflexivity.
+    - intros. rewrite H. auto.
 Qed.
 
 
-Lemma stuff_remove_end_flag : forall (a : list bool), 
-        remove_end_flag (stuff a ++ [false; true; true; true; false]) = stuff a ++ remove_end_flag([false; true; true; true; false]).
+Lemma no_flag_remove_end_flag : forall (a : list bool) , 
+        ~Is_true(contains (a ++ [false; true; true; true]) [false; true; true; true; false]) -> 
+        remove_end_flag (a ++ [false; true; true; true; false]) = a ++ remove_end_flag [false;true;true;true;false].
   intros.
   induction a as [| ha ta IH].
-    - simpl. rewrite stuff_equation. simpl. reflexivity.
-    - 
-Admitted.
+    - simpl. reflexivity.
+    - simpl. simpl in H. simpl in IH.
+      apply not_is_true_iff_false in H.
+      apply orb_false_iff in H.
+      destruct H as [HL HR].
+      assert (eqb ha false && starts_with (ta ++ [false; true; true; true; false]) [true; true; true; false] = false).
+        + apply andb_false_iff in HL.
+          destruct HL as [HLL | HLR].
+            * rewrite HLL. simpl. auto.
+            * destruct ta as [|[] [|[] [|[] [|[] [|]]]]].
+              all: simpl. all: simpl in HLR. all: lia.
+        + rewrite H. apply not_is_true_iff_false in HR.
+          pose (apply_IH := IH HR).
+          rewrite apply_IH.
+          reflexivity.
+Qed.
 
 
 Lemma add_remove_flags_eq : forall (a : list bool), stuff a = remove_flags (add_flags (stuff a)).
@@ -289,7 +310,12 @@ Lemma add_remove_flags_eq : forall (a : list bool), stuff a = remove_flags (add_
   unfold remove_flags.
   simpl.
   replace (starts_with (stuff a ++ [false; true; true; true; false]) []) with true.
-    - rewrite stuff_remove_end_flag. simpl. symmetry. apply app_nil_r.
+    - pose (b := stuff a). assert (b = stuff a).
+      + auto.
+      + pose (no_flag := stuff_and_partial_flag_no_contains_flag a b H).
+        pose (H0 := no_flag_remove_end_flag b no_flag).
+        rewrite H in H0.
+        simpl in H0. rewrite app_nil_r in H0. symmetry in H0. exact H0.
     - symmetry. apply starts_with_nil.
 Qed.
 
