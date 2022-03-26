@@ -176,7 +176,7 @@ Lemma starts_with_append : forall (ha k : list bool) (ta : bool), Is_true (start
          simpl. exact apply_IH.
 Qed.
 
-(*
+
 Lemma contains_at_end : forall (ha k : list bool) (ta : bool), Is_true (contains (ha ++ [ta]) k) <-> contains ha k = true \/ ends_with (ha ++ [ta]) k = true.
   intros. 
   split.
@@ -193,14 +193,38 @@ Lemma contains_at_end : forall (ha k : list bool) (ta : bool), Is_true (contains
                pose (apply_starts_with_append := starts_with_append tha tk ta HLL).
                apply Is_true_eq_true in apply_starts_with_append. rewrite apply_starts_with_append. rewrite <- HLR. simpl. exact I.
             ++ pose (apply_IH := IH HR). apply Is_true_eq_true in apply_IH. rewrite apply_IH. rewrite orb_true_r. simpl. exact I.
-Admitted.*)
+Admitted.
+
+Lemma contains_reverse_forward : forall (a k : list bool), Is_true (contains a k) -> Is_true (contains (rev a) (rev k)).
+  intros a k H.
+  induction a as [| ta ha IH] using rev_ind.
+    - destruct k.
+      + simpl. auto.
+      + simpl in H. contradiction.
+    - pose (H1 := contains_at_end ha k ta).
+      destruct H1.
+      pose (H2 := H0 H).
+      destruct k as [| hk tk].
+      + rewrite rev_unit. simpl. auto.
+      + rewrite rev_unit. destruct H2 as [H2L | H2R].
+        *  apply Is_true_eq_left in H2L.
+           pose (H3 := IH H2L). apply Is_true_eq_true in H3. simpl. simpl in H3.
+           rewrite H3. rewrite orb_true_r. case (rev tk ++ [hk]). all: simpl. all: auto.
+        *  unfold ends_with in H2R. 
+           rewrite rev_unit in H2R. 
+           simpl. simpl in H2R.
+           rewrite H2R. simpl. case (rev tk ++ [hk]). all: simpl. all: auto.
+Qed.
 
 Lemma contains_reverse : forall (a k : list bool), Is_true (contains a k) <-> Is_true (contains (rev a) (rev k)).
-  intros.
   split.
-    - intros.
-      admit.
-Admitted.
+    - apply contains_reverse_forward. 
+    - replace a with (rev (rev a)) at 2.
+      + replace k with (rev (rev k)) at 2.
+        * apply contains_reverse_forward. 
+        * rewrite rev_involutive. reflexivity.
+      + rewrite rev_involutive. reflexivity.
+Qed.
 
 
 Lemma contains_remove_back : forall (a hk : list bool) (tk : bool), 
