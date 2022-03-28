@@ -150,10 +150,9 @@ Lemma contains_remove_front : forall (a tk : list bool) (hk : bool),
 Qed.
 
 
-(*Lemma contains_end L forall (ha k : list bool) (ta : bool), Is_true (contains (ha ++ [ta])*)
-
 Definition ends_with (a k : list bool) : bool :=
   starts_with (rev a) (rev k).
+
 
 Lemma starts_with_ends_with : forall (a k : list bool), Is_true (starts_with a k) <-> Is_true (ends_with (rev a) (rev k)).
   intros.
@@ -173,27 +172,123 @@ Lemma starts_with_append : forall (ha k : list bool) (ta : bool), Is_true (start
        + simpl. simpl in H. apply andb_prop_elim in H. destruct H as [HL HR]. 
          pose (apply_IH := IH tk ta HR).
          apply Is_true_eq_true in HL. rewrite HL.
-         simpl. exact apply_IH.
+         simpl. exact apply_IH. 
 Qed.
 
 
-Lemma contains_at_end : forall (ha k : list bool) (ta : bool), Is_true (contains (ha ++ [ta]) k) <-> contains ha k = true \/ ends_with (ha ++ [ta]) k = true.
+Lemma not_is_true_iff_false: forall (b : bool), ~Is_true b <-> b = false.
+    intros.
+    split.
+    - intros. destruct b.
+      + simpl in H. contradiction.
+      + reflexivity.
+    - intros. rewrite H. auto.
+Qed.
+
+Lemma starts_with_length : forall (ha k : list bool) (ta : bool), ~Is_true (starts_with ha k) -> Is_true (starts_with (ha ++ [ta]) k) -> length (ha ++ [ta]) = length k.
+  intros ha.
+  induction ha as [| hha tha IH].
+    - intros. simpl. destruct k as [| hk [| hta tk]].
+      + simpl in H. lia.
+      + simpl. reflexivity.
+      + simpl in H0. apply Is_true_eq_true in H0. lia. 
+    - destruct k as [| hk tk].
+      + intros. simpl in H. lia.
+      + intros. pose (IH' := IH tk ta).
+        simpl in H. simpl in H0. apply andb_prop_elim in H0. destruct H0 as [H0L H0R]. 
+        apply Is_true_eq_true in H0L.
+        rewrite H0L in H. simpl in H. 
+        pose (IH'' := IH' H). simpl. auto.
+Qed.
+
+
+Lemma starts_with_eq : forall (a k : list bool), Is_true (starts_with a k) -> length a = length k -> a = k.
+  intros a.
+  induction a as [| ha ta IH].
+    - intros. destruct k.
+      + auto.
+      + simpl in H. tauto.
+    - intros. destruct k as [| hk tk].
+      + simpl in H0. lia.
+      + pose (IH' := IH tk).
+        simpl in H. apply andb_prop_elim in H. destruct H as [HL HR]. simpl in H0.
+        assert (length ta = length tk).
+          * auto.
+          * pose (IH'' := IH' HR H).
+            apply Is_true_eq_true in HL.
+            rewrite eqb_true_iff in HL.
+            rewrite IH''. rewrite HL. auto.
+Qed.
+
+
+Lemma starts_with_itself : forall (a : list bool), starts_with a a = true.
+  intros a.
+  induction a as [| ha ta IH].
+    - simpl. auto.
+    - simpl. rewrite eqb_reflx. simpl. auto.
+Qed.
+
+Lemma starts_with_at_end : forall (ha k : list bool) (ta : bool), Is_true (starts_with (ha ++ [ta]) k) -> starts_with ha k = true \/ ends_with (ha ++ [ta]) k = true.
+  intros ha.
+  induction ha as [|hha tha IH]. 
+    - intros. destruct k as [| hk [| hta ttk]].
+      + simpl. auto.
+      + unfold ends_with. simpl. simpl in H. apply Is_true_eq_true in H. rewrite H. auto.
+      + simpl in H. apply Is_true_eq_true in H. rewrite andb_false_r in H. auto.
+    - intros. destruct k as [| hk tk]. 
+      + simpl. auto.
+      + simpl in H. 
+        apply Is_true_eq_true in H.
+        apply andb_true_iff in H.
+        destruct H as [HL HR].
+        simpl. apply Is_true_eq_left in HR.
+        pose proof (IH' := IH tk ta HR). 
+        pose proof (sw_len := starts_with_length tha tk ta).
+        destruct (starts_with tha tk).
+          * rewrite HL. simpl. auto.
+          * assert (~ Is_true false).
+            -- auto.
+            -- pose proof (sw_len' := sw_len H HR).
+               pose proof (eq := starts_with_eq (tha ++ [ta]) tk HR sw_len').
+               unfold ends_with.
+               simpl. rewrite eq. apply eqb_prop in HL. rewrite HL. 
+               enough (starts_with (rev tk ++ [hk]) (rev tk ++ [hk]) = true).
+                  ** rewrite H0. auto.
+                  ** apply starts_with_itself.
+Qed.
+
+
+Lemma contains_at_end : forall (ha k : list bool) (ta : bool), Is_true (contains (ha ++ [ta]) k) -> contains ha k = true \/ ends_with (ha ++ [ta]) k = true.
   intros. 
-  split.
-    - intros. admit.
-    - intros. destruct H. 
-      + induction ha as [| hha tha IH].
-        * destruct k.
-          -- simpl. exact I.
-          -- simpl in H. lia. 
-        * destruct k as [| hk tk].
-          -- simpl. exact I.
-          -- simpl. simpl in H. apply orb_true_iff in H. destruct H as [HL | HR] .
-            ++ symmetry in HL. apply andb_true_eq in HL. destruct HL as [HLR HLL]. apply Is_true_eq_right in HLL.
-               pose (apply_starts_with_append := starts_with_append tha tk ta HLL).
-               apply Is_true_eq_true in apply_starts_with_append. rewrite apply_starts_with_append. rewrite <- HLR. simpl. exact I.
-            ++ pose (apply_IH := IH HR). apply Is_true_eq_true in apply_IH. rewrite apply_IH. rewrite orb_true_r. simpl. exact I.
-Admitted.
+  induction ha as [|hha tha IH].
+  - enough (ends_with ([] ++ [ta]) k = true).
+    + rewrite H0. auto.
+    + destruct k as [| hk [| htk ttk]].
+      * unfold ends_with. simpl. reflexivity.
+      * unfold ends_with. simpl. simpl in H. 
+         apply Is_true_eq_true in H. rewrite orb_false_r in H. exact H.
+      * simpl in H. rewrite orb_false_r in H. simpl in H. rewrite andb_false_r in H. auto.
+  - destruct k as [| hk tk].
+    + simpl. auto.
+    + simpl in H.
+      apply orb_prop_elim in H.
+      destruct H as [HL | HR]. 
+        * pose (sw_at_end := starts_with_at_end (hha::tha) (hk::tk) (ta)).
+           simpl in sw_at_end.
+           pose (sw_at_end' := sw_at_end HL).
+           destruct sw_at_end' as [SWL | SWR].
+            -- simpl. rewrite SWL. simpl. auto.
+            -- simpl. rewrite SWR. auto.
+        * pose (H' := IH HR).
+           unfold ends_with. simpl. unfold ends_with in H'. simpl in H'. 
+           destruct H' as [Hl' | HR'].
+            -- rewrite Hl'. lia.
+            -- apply Is_true_eq_left in HR'. 
+                pose (sw_append := starts_with_append (rev (tha ++ [ta])) (rev tk ++ [hk]) hha HR').
+                apply Is_true_eq_true in sw_append.
+                rewrite sw_append. auto.
+Qed.
+
 
 Lemma contains_reverse_forward : forall (a k : list bool), Is_true (contains a k) -> Is_true (contains (rev a) (rev k)).
   intros a k H.
@@ -201,19 +296,17 @@ Lemma contains_reverse_forward : forall (a k : list bool), Is_true (contains a k
     - destruct k.
       + simpl. auto.
       + simpl in H. contradiction.
-    - pose (H1 := contains_at_end ha k ta).
-      destruct H1.
-      pose (H2 := H0 H).
+    - pose (H1 := contains_at_end ha k ta H).
       destruct k as [| hk tk].
       + rewrite rev_unit. simpl. auto.
-      + rewrite rev_unit. destruct H2 as [H2L | H2R].
-        *  apply Is_true_eq_left in H2L.
-           pose (H3 := IH H2L). apply Is_true_eq_true in H3. simpl. simpl in H3.
-           rewrite H3. rewrite orb_true_r. case (rev tk ++ [hk]). all: simpl. all: auto.
-        *  unfold ends_with in H2R. 
-           rewrite rev_unit in H2R. 
-           simpl. simpl in H2R.
-           rewrite H2R. simpl. case (rev tk ++ [hk]). all: simpl. all: auto.
+      + rewrite rev_unit. destruct H1 as [H1L | H1R].
+        *  apply Is_true_eq_left in H1L.
+           pose (H2 := IH H1L). apply Is_true_eq_true in H2. simpl. simpl in H2.
+           rewrite H2. rewrite orb_true_r. case (rev tk ++ [hk]). all: simpl. all: auto.
+        *  unfold ends_with in H1R. 
+           rewrite rev_unit in H1R. 
+           simpl. simpl in H1R.
+           rewrite H1R. simpl. case (rev tk ++ [hk]). all: simpl. all: auto.
 Qed.
 
 Lemma contains_reverse : forall (a k : list bool), Is_true (contains a k) <-> Is_true (contains (rev a) (rev k)).
@@ -293,15 +386,6 @@ Lemma stuff_and_partial_flag_no_contains_flag : forall (a b: list bool) ,
           apply contains_remove_front in H0.
           pose (H1 := stuff_no_contains_three_true a).
           contradiction.
-Qed.
-
-Lemma not_is_true_iff_false: forall (b : bool), ~Is_true b <-> b = false.
-    intros.
-    split.
-    - intros. destruct b.
-      + simpl in H. contradiction.
-      + reflexivity.
-    - intros. rewrite H. auto.
 Qed.
 
 
